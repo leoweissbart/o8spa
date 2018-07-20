@@ -6,8 +6,8 @@ import pandas as pd
 from scipy import signal
 from order8_keybits_to_HL import order8_keybits_to_HL
 from order8_HL_to_keybits import order8_HL_to_keybits
-from patternClassification8 import patternClassification8
-from correlation_vs_model8 import correlation_vs_model8_v1
+from patternClassification8 import patternClassification8_v3
+from correlation_vs_model8 import correlation_vs_model8_6patterns_real
 from printHex256bits import printHex256bits
 import time
 
@@ -87,56 +87,37 @@ keybits = [int(i) for i in keybits]
 #transform the 0 and 1 of bit key into high and low levels of trace for X and Z and take one to class the patterns
 predicted_level_x,predicted_level_z,pat=order8_keybits_to_HL(keybits)
 
-#cut the measure in pattern according to the signal (supervised)
-A,B,C=patternClassification8(model_filtered_x,model_filtered_y,predicted_level_x,predicted_level_z)
+#############################################################################################################################
+patternA,patternB,patternC=patternClassification8_v3(model_filtered_x,model_filtered_y,predicted_level_x,predicted_level_z)
 
-for i in range(len(A)):
-    A[i]-=np.mean(A[i])
-for i in range(len(B)):
-    B[i]-=np.mean(B[i])
-for i in range(len(C)):
-    C[i]-=np.mean(C[i])
-ta=np.linspace(0,len(A[0])-1,len(A[0]))
-colors=['k','g','r','y','b']
-j=0
+model=[[],[],[],[],[],[]]
+colors=['k','g','r','y','b','m','c','y']
+for j,ind in enumerate([patternA[0],patternA[1],patternB[0],patternB[1],patternC[0],patternC[1]]):
+    for i in range(len(ind)):
+        ind[i]-=np.mean(ind[i])
+    # t=np.linspace(0,len(ind[0])-1,len(ind[0]))
+    # j=0
+    # plt.figure()
+    # for i in range(len(ind)):
+    #     j=(i%5)
+    #     plt.plot(t,ind[i],colors[j])
+    #     plt.title(i)
+    model[j]=np.mean(ind,axis=0)
+    model[j]=(model[j]-np.mean(model[j]))/(np.std(model[j]))
+
+#print all model
+
 plt.figure()
-for i in range(len(A)):
-    j=(i%5)
-    plt.plot(ta,A[i],colors[j])
-    plt.title('A')
-tb=np.linspace(0,len(B[0])-1,len(B[0]))
-plt.figure()
-for i in range(len(B)):
-    j=i%5
-    plt.plot(tb,B[i],colors[j])
-    plt.title('B')
-tb=np.linspace(0,len(C[0])-1,len(C[0]))
-plt.figure()
-for i in range(len(C)):
-    j=i%5
-    plt.plot(tb,C[i],colors[j])
-    plt.title('C')
-
-
-
-#create the model of pattern A and B
-model_A=np.mean(A,axis=0)
-model_B=np.mean(B,axis=0)
-model_C=np.mean(C,axis=0)
-model_A-=np.mean(model_A)
-model_B-=np.mean(model_B)
-model_C-=np.mean(model_C)
-
-
-#print both model
-t=np.linspace(0,(len(model_A)-1)*1e-4,len(model_A))
-plt.figure()
-plt.title('Model A,B,C for filtered trace (model_A, model_B, model_C)')
-plt.plot(t,model_A,'r',t,model_B,'b',t,model_C,'g')
+plt.title('Model A1,A2,B1,B2,C1,C2')
+for i in range(len(model)):
+    t=np.linspace(0,(len(model[i])-1)*1e-4,len(model[i]))
+    plt.plot(t,model[i],colors[i])
 plt.xlabel('Time (in Second)')
 plt.ylabel('Tension (in Volt)')
-plt.legend(('A','B','C'),loc='best')
+plt.legend(('A1','A2','B1','B2','C1','C2'),loc='best')
 
+
+#############################################################################################################################
 
 #this is the key bits values we should retreive considering the one used for unknown measure (to verify we retreive the good key)
 with open('mesure-order8-5-10-18/bin_unknown_keybits01u.txt') as f:
@@ -146,10 +127,12 @@ predicted_keybits = [int(i) for i in predicted_keybits]
 predicted_unknown_level_x,predicted_unknown_level_z,pre_pattern=order8_keybits_to_HL(predicted_keybits)
 # print(pre_pattern)
 
+#############################################################################################################################################
+#we do correlation using 6 patterns
+unknown_xlevel,unknown_zlevel,u_pattern = correlation_vs_model8_6patterns_real(unknown_filtered_x,unknown_filtered_trigger,model)
 
-#we do correlation
-unknown_xlevel,unknown_zlevel,u_pattern = correlation_vs_model8_v1(unknown_filtered_x,unknown_filtered_trigger,model_A,model_B,model_C)
-# print(u_pattern)
+
+#############################################################################################################################################
 
 # #and convert the levels into keybits with order 4 point algorithm
 unknown_keybits=order8_HL_to_keybits(unknown_xlevel,unknown_zlevel)
